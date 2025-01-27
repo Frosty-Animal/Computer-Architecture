@@ -13,3 +13,8 @@ associated with Lab 0.  It should be modified to handle its behavior.
 The fsm_tb.sv and fsm.do should be modified to simulate the register
 file.  For more information on a register file see Chapter 5 in DDCA.  
 
+There was also an additional file added to the lab labeled regfile.do in order to
+complete the second portion of the lab. To simulate the regfile.do type in 
+the following into a terminal or command prompt:
+
+    vsim -do regfile.do
