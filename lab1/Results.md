@@ -1,4 +1,4 @@
-
+O Optimization of fir1
 # Y[0] = 3
 # Y[1] = 4
 # Y[2] = 5
