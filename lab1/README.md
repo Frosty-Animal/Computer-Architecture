@@ -53,4 +53,67 @@ The list of commands used for 3.1 will look like the screenshot below:
 
 ![Screenshot from 2025-02-17 21-08-16](https://github.com/user-attachments/assets/9d826e92-048c-4934-9438-45183fab28a4)
 
-For 3.2
+For 3.2 we will be using make files to automate the building, cleaning, and simulation checks. First we will be inspecting the Makefile by:
+
+```
+cat Makefile
+```
+We will then build by using:
+```
+make
+```
+Finally, to clean the intermediate and output files, the following command is used:
+
+```
+make clean
+```
+The list of commands used for 3.2 will look like the screenshot below:
+
+![Screenshot from 2025-02-17 21-15-12](https://github.com/user-attachments/assets/615d4b41-5318-43a1-9a9c-129419b72d4b)
+
+In section 3.3 we will be simulating the RISCV files using spike. We will do this by going to the sumtest example file:
+
+```
+cd $WALLY/examples/asm/sumtest
+```
+Build the file:
+```
+make
+```
+Finally, simulate with spike and generate a signiture by:
+```
+spike +signature=sumtest.signature.output sumtest
+```
+now we can compare with a refernce file to check if your file has ran as expected by using:
+```
+diff sumtest.signature.output sumtest.reference_output
+```
+We can now review the sum file by using the next 3 commands and if all goes well then the signatures should be a match with the simulation:
+```
+make
+```
+```
+make clean
+```
+```
+make sim
+```
+As seen in the screenshot below the signature should match as expected:
+![Screenshot from 2025-02-17 21-25-27](https://github.com/user-attachments/assets/d4449de0-d6c3-4ff3-903c-6faecafcbe1b)
+
+For the final sectionf 3.3 we will compile C code by navigating to:
+```
+cd $WALLY/examples/C/sum
+```
+then we will build and simulate the code to verify that i will work:
+```
+make
+```
+```
+spike sum
+```
+The list of commands used for 3.3 will loop like the screenshot below:
+![Screenshot from 2025-02-17 21-28-47](https://github.com/user-attachments/assets/9ee49b00-0cad-45cd-ac6c-f72fe54e6706)
+
+Section 3.6 requires us to optomise the sum files cycles and instructions by running various optimization levels. The Excel spreadsheet below is the fillout table of the outputs from our Spike and wsim simulations.
+
