@@ -123,7 +123,11 @@ from 2025-02-17 21-55-14](https://github.com/user-attachments/assets/ed3b53ef-16
 ![Screenshot from 2025-02-17 21-53-22](https://github.com/user-attachments/assets/feaaab41-7d2e-457a-bbd1-63295d8de450)
 ![Screenshot from 2025-02-17 22-01-16](https://github.com/user-attachments/assets/e97b6572-c7ff-44b7-8c10-5e9e9ddb51b5)
 
-
+For section 4, you will need to go to the respective directories in fir1 and fir2 folders and simulate each by running:
+```
+make
+```
+in the terminal in order to run each
 
 
 
