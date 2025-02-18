@@ -11,5 +11,11 @@ https://www.cs.cornell.edu/courses/cs3410/2019sp/riscv/interpreter/.
 However, the best way to compile something is using RISC-V toolchain
 that we have available.
 
+For Section 2 of the lab report you will need to start by cloning the repository as stated in 2.1. You can do this by opening the command prompt and entering in the following command:
+'''git clone --recurse-submodules https://github.com/<yourgithubid>/cvw.'''
+
+
+For Section 3 of the lab report you will need to use the following commands:
+
 
 
