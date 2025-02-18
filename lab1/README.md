@@ -119,6 +119,7 @@ Section 3.6 requires us to optomise the sum files cycles and instructions by run
 ![Screenshot file:///home/08-comp-arch-f/Pictures/Screenshots/Screenshot%20from%202025-02-17%2021-53-49.png
 from 2025-02-17 21-55-14](https://github.com/user-attachments/assets/ed3b53ef-1641-4f97-99b8-1e6aad15578f)
 ![Screenshot from 2025-02-17 21-52-30](https://github.com/user-attachments/assets/f6ee0c82-ed61-48e0-b9f3-e8756f35747e)
+![Screenshot from 2025-02-17 21-53-49](https://github.com/user-attachments/assets/d3c7f2ec-c4a9-44ed-8fa3-5830cfb5a9eb)
 
 
 
