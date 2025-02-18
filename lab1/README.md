@@ -15,7 +15,7 @@ For Section 2 of the lab report you will need to start by cloning the repository
 ```
 git clone --recurse-submodules https://github.com/<yourgithubid>/cvw.
 ```
-Be sure to update the command by switching out <yourgithubid> with your actual github ID. After you have done this you wil need to setup your Wally enviroment which can be done by using the folloing command:
+Be sure to update the command by switching out <yourgithubid> with your actual github ID. After you have done this you wil need to setup your Wally enviroment as seen in 2.2 which can be done by using the folloing command:
 ```
 source ./setup.sh. 
 ```
@@ -23,6 +23,15 @@ Next, navagte to your cvw file in your directory by going to:
 ```
 cd ecen4243S25/lab1/cvw
 ```
+We will be going to the test program in Wally to practice compiling and running Wally programs. Go to:
+```
+cd examples/C/hello
+```
+compile the program by using:
+```
+make
+```
+Finally we will sim
 For Section 3 of the lab report you will need to use the following commands:
 
 
