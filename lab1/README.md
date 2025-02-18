@@ -37,7 +37,7 @@ wsim --sim questa rv64gc --elf hello.
 ```
 The history of your commands should look like the screenshot below:
 
-https://github.com/Frosty-Animal/Computer-Architecture/blob/main/lab1/Section%202%20terminal%20history
+![Section 2 terminal history](https://github.com/user-attachments/assets/0d307778-0f70-4e0e-a2f2-2cc5e680d20f)
 
 For Section 3 of the lab report you will need to use the following commands:
 
