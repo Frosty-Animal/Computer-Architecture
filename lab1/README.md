@@ -120,6 +120,8 @@ Section 3.6 requires us to optomise the sum files cycles and instructions by run
 from 2025-02-17 21-55-14](https://github.com/user-attachments/assets/ed3b53ef-1641-4f97-99b8-1e6aad15578f)
 ![Screenshot from 2025-02-17 21-52-30](https://github.com/user-attachments/assets/f6ee0c82-ed61-48e0-b9f3-e8756f35747e)
 ![Screenshot from 2025-02-17 21-53-49](https://github.com/user-attachments/assets/d3c7f2ec-c4a9-44ed-8fa3-5830cfb5a9eb)
+![Screenshot from 2025-02-17 21-53-22](https://github.com/user-attachments/assets/feaaab41-7d2e-457a-bbd1-63295d8de450)
+![Screenshot from 2025-02-17 21-52-59](https://github.com/user-attachments/assets/f8f57cdd-22d4-4f99-83af-6e5fa43e6518)
 
 
 
