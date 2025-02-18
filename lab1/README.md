@@ -31,7 +31,12 @@ compile the program by using:
 ```
 make
 ```
-Finally we will sim
+Finally we will simulate using questa using the following command: 
+```
+wsim --sim questa rv64gc --elf hello.
+```
+The history of your commands should look like the screenshot below:
+
 For Section 3 of the lab report you will need to use the following commands:
 
 
