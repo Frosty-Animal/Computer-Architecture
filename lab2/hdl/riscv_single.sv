@@ -116,7 +116,7 @@ module controller (input  logic [6:0] op,
 	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp, Load);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
    case(funct3)
-    3'b000: assign BranchCtrl = Zero; // ? 1'b1 : 1'b0;     // beq
+    3'b000: assign BranchCtrl = Zero;	         // beq
     3'b001: assign BranchCtrl = ~Zero;           // bne
     3'b100: assign BranchCtrl = Negative ^ v;    // blt
     3'b101: assign BranchCtrl = ~(Negative ^ v); // bge
