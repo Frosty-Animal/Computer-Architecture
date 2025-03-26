@@ -120,19 +120,15 @@ module controller (input  logic [6:0] op,
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
-   
-   
+   	
 
-   always_comb
-	   case (funct3)
-			3'b000:  assign BranchTaken = Zero; 					// beq =
-			3'b001:  assign BranchTaken = ~Zero; 					// bne !=
-			3'b100:  assign BranchTaken = (Negative ^ Overflow);  	// blt <
-			3'b101:  assign BranchTaken = ~(Negative ^ Overflow);   	// bge >=
-			3'b110:  assign BranchTaken = ~Carry; 					// bltu < unsigned
-			3'b111:  assign BranchTaken = Carry; 				   	// bgeu >= unsigned
-			default: assign BranchTaken = Zero;
-	endcase
+   assign BranchTaken = (Zero & ~funct3[0] & ~funct3[1] & ~funct3[2]) |
+  			(~Zero & funct3[0] & ~funct3[1] & ~funct3[2])  |
+  			( (Negative ^ Overflow) & ~funct3[0] & ~funct3[1] & funct3[2]) |
+  			( ~(Negative ^ Overflow) & funct3[0] & ~funct3[1] & funct3[2]) |
+  			( ~Carry & ~funct3[0] & funct3[1] & funct3[2]) |
+  			( Carry & funct3[0] & funct3[1] & funct3[2]);
+  			
 
    assign PCSrc = Branch & (BranchTaken ^ funct3[0]) | Jump;
    
@@ -337,26 +333,6 @@ module mux3 #(parameter WIDTH = 8)
   assign y = s[1] ? d2 : (s[0] ? d1 : d0);
    
 endmodule // mux3
-
-module top (input  logic        clk, reset,
-	    output logic [31:0] WriteData, DataAdr,
-	    output logic 	MemWrite);
-   
-   logic [31:0] 		PC, Instr, ReadData;
-   
-   riscvsingle rv32single (clk,
-						   reset,
-						   PC,
-						   Instr,
-						   MemWrite,
-						   DataAdr,
-						   WriteData,
-						   ReadData);
-						   
-   imem imem (PC, Instr);
-   dmem dmem (clk, MemWrite, DataAdr, WriteData, Instr[14:12], ReadData);
-   
-endmodule // top
 
 module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
