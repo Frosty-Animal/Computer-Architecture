@@ -73,7 +73,7 @@ module testbench();
      end
 endmodule // testbench
 
-module riscvsingle (input  logic  		clk, reset,
+module riscvsingle (input  logic  		clk, reset, MemStrobe,
 				    output logic [31:0] PC,
 		            input  logic [31:0] Instr,
 		            output logic 		MemWrite,
@@ -93,7 +93,7 @@ module riscvsingle (input  logic  		clk, reset,
 				 ALUSrc, RegWrite, Jump,
 				 ImmSrc, ALUControl);
 		 
-   datapath dp (clk, reset, ResultSrc, PCSrc, Jump,
+	datapath dp (clk, reset, MemStrobe ,ResultSrc, PCSrc, Jump,
 				ALUSrc, RegWrite,
 				ImmSrc, ALUControl,
 				Zero, Negative, Carry, Overflow,
@@ -139,29 +139,29 @@ module maindec (input  logic [6:0] op,
 		output logic 	   MemWrite,
 		output logic 	   Branch,
 		output logic [1:0]  ALUSrc,
-		output logic 	   RegWrite, Jump,
+		output logic 	   RegWrite, Jump, MemStrobe,
 		output logic [2:0] ImmSrc,
 		output logic [1:0] ALUOp);
    
-   logic [12:0] 		   controls;
+	logic [13:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump} = controls;
+	   ResultSrc, Branch, ALUOp, Jump, MemStrobe} = controls;
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump
-       7'b0000011: controls = 13'b1_000_01_0_01_0_00_0; // load
-       7'b0100011: controls = 13'b0_001_01_1_00_0_00_0; // save
-       7'b0110011: controls = 13'b1_xxx_00_0_00_0_10_0; // R–type
-       7'b1100011: controls = 13'b0_010_00_0_00_1_01_0; // B-Type
-       7'b0010011: controls = 13'b1_000_01_0_00_0_10_0; // I–type ALU
-       7'b1101111: controls = 13'b1_011_xx_0_10_0_xx_1; // Jal     
-       7'b1100111: controls = 13'b1_000_01_0_10_0_00_1; // jalr    
-       7'b0010111: controls = 13'b1_100_11_0_00_0_00_0; // auipc    
-       7'b0110111: controls = 13'b1_100_01_0_00_0_11_0; // lui      
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_MemStrobe
+       7'b0000011: controls = 14'b1_000_01_0_01_0_00_0_1; // load
+       7'b0100011: controls = 14'b0_001_01_1_00_0_00_0_1; // save
+       7'b0110011: controls = 14'b1_xxx_00_0_00_0_10_0_0; // R–type
+       7'b1100011: controls = 14'b0_010_00_0_00_1_01_0_0; // B-Type
+       7'b0010011: controls = 14'b1_000_01_0_00_0_10_0_0; // I–type ALU
+       7'b1101111: controls = 14'b1_011_xx_0_10_0_xx_1_0; // Jal     
+       7'b1100111: controls = 14'b1_000_01_0_10_0_00_1_0; // jalr    
+       7'b0010111: controls = 14'b1_100_11_0_00_0_00_0_0; // auipc    
+       7'b0110111: controls = 14'b1_100_01_0_00_0_11_0_0; // lui      
 
-       default: controls = 13'bx_xxx_x_x_xx_x_xx_x; // ???
+       default: controls = 14'bx_xxx_x_x_xx_x_xx_x_x; // ???
      endcase // case (op)
    
 endmodule // maindec
@@ -222,7 +222,7 @@ module aludec (input  logic     opb5,
    
 endmodule // aludec
 
-module datapath (input  logic        clk, reset,
+module datapath (input  logic        clk, reset,PCReady,
 		 input  logic [1:0]  ResultSrc,
 		 input  logic 	     PCSrc, Jump,
 	     input  logic [1:0]  ALUSrc,
@@ -241,7 +241,7 @@ module datapath (input  logic        clk, reset,
    logic [31:0] 		     Result;
    
    // next PC logic
-   flopr #(32) pcreg (clk, reset, PCNext, PC);
+	flopenr #(32) pcreg(clk, reset, PCReady, PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    //mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
