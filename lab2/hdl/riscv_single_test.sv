@@ -181,9 +181,9 @@ module aludec (input  logic     opb5,
      case(ALUOp)
        2'b00: ALUControl = 4'b0000; // addition
       //  2'b01: ALUControl = 4'b0001; // subtraction
-       2'b01: if (funct3 == 3'b000 || funct3 == 3'b001) // used full funct 3 for clarity code - jordan
+       2'b01: if (funct3 == 3'b000 || funct3 == 3'b001) 
                   ALUControl = 4'b1011; // subtraction beq/bne
-              else if (funct3 == 3'b100 || funct3 == 3'b101) // used full funct 3 for clarity code - jordan
+              else if (funct3 == 3'b100 || funct3 == 3'b101)
                   ALUControl = 4'b1101; // subtraction blt/bge
               else 
                   ALUControl = 4'b1111; // subtraction bltu/bgeu
