@@ -6,6 +6,14 @@
 // David_Harris@hmc.edu 
 // Sarah.Harris@unlv.edu
 
+// riscvsingle.sv
+
+// RISC-V single-cycle processor
+// From Section 7.6 of Digital Design & Computer Architecture
+// 27 April 2020
+// David_Harris@hmc.edu 
+// Sarah.Harris@unlv.edu
+
 // run 210
 // Expect simulator to print "Simulation succeeded"
 // when the value 25 (0x19) is written to address 100 (0x64)
@@ -24,12 +32,64 @@
 //   lw	          0000011   010       immediate
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate 
+/*
+add
+addi
+and
+andi
+auipc
+beq
+bge
+bgeu
+blt
+bltu
+bne
+jal
+jalr
+lb
+lbu
+lh
+lhu
+lw
+lui
+or
+ori
+sb
+sh
+sll
+slt
+slli
+slti
+sltiu
+sltu
+sra
+srai
+srl
+srli
+sub
+sw
+xor
+xori
 
+
+
+
+
+multiply
+divide
+factorial
+square
+square root
+ln
+log
+e
+x^-1
+
+*/
 module testbench();
 
    logic        clk;
    logic        reset;
-
    logic [31:0] WriteData;
    logic [31:0] DataAdr;
    logic        MemWrite;
@@ -40,9 +100,9 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/lh.memfile"};
+        memfilename = {"../testing/lb.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
-		$readmemh(memfilename, dut.dmem.RAM);
+        $readmemh(memfilename, dut.dmem.RAM);
      end
 
    
@@ -65,7 +125,7 @@ module testbench();
 			   if(DataAdr === 100 & WriteData === 25) begin
 				  $display("Simulation succeeded");
 				  $stop;
-			   end else if (DataAdr !== 96) begin
+			   end else if (DataAdr === 100 & WriteData === 17) begin
 				  $display("Simulation failed");
 				  $stop;
 			   end
@@ -73,12 +133,13 @@ module testbench();
      end
 endmodule // testbench
 
-module riscvsingle (input  logic  		clk, reset, MemStrobe,
+module riscvsingle (input  logic  		clk, reset,
 				    output logic [31:0] PC,
 		            input  logic [31:0] Instr,
 		            output logic 		MemWrite,
 					output logic [31:0] ALUResult, WriteData,
 					input  logic [31:0] ReadData);
+          /*input logic /*MemStrobe,*/ /*PCReady*/
    
    logic 			    RegWrite, Jump;
    logic [1:0]          ALUSrc;
@@ -93,8 +154,8 @@ module riscvsingle (input  logic  		clk, reset, MemStrobe,
 				 ALUSrc, RegWrite, Jump,
 				 ImmSrc, ALUControl);
 		 
-	datapath dp (clk, reset, MemStrobe ,ResultSrc, PCSrc, Jump,
-				ALUSrc, RegWrite,
+	datapath dp (clk, reset, /*MemStrobe,*/ /*PCReady,*/ ResultSrc, PCSrc, Jump,
+				Instr[14:12], ALUSrc, RegWrite,
 				ImmSrc, ALUControl,
 				Zero, Negative, Carry, Overflow,
 				PC,  Instr,
@@ -120,17 +181,20 @@ module controller (input  logic [6:0] op,
    maindec md (op, ResultSrc, MemWrite, Branch,
 	       ALUSrc, RegWrite, Jump, ImmSrc, ALUOp);
    aludec ad (op[5], funct3, funct7b5, ALUOp, ALUControl);
-   	
 
-   assign BranchTaken = (Zero & ~funct3[0] & ~funct3[1] & ~funct3[2]) |
-  			(~Zero & funct3[0] & ~funct3[1] & ~funct3[2])  |
-  			( (Negative ^ Overflow) & ~funct3[0] & ~funct3[1] & funct3[2]) |
-  			( ~(Negative ^ Overflow) & funct3[0] & ~funct3[1] & funct3[2]) |
-  			( ~Carry & ~funct3[0] & funct3[1] & funct3[2]) |
-  			( Carry & funct3[0] & funct3[1] & funct3[2]);
+  always_comb
+ 	   case (funct3)
+ 			3'b000:  BranchTaken = Zero; 					// beq =
+ 			3'b001:  BranchTaken = ~Zero; 					// bne !=
+ 			3'b100:  BranchTaken = (Negative ^ Overflow);  	// blt <
+ 			3'b101:  BranchTaken = ~(Negative ^ Overflow);   	// bge >=
+ 			3'b110:  BranchTaken = ~Carry; 					// bltu < unsigned
+ 			3'b111:  BranchTaken = Carry; 				   	// bgeu >= unsigned
+ 			default: BranchTaken = 1'b0;
+ 	endcase
   			
 
-   assign PCSrc = Branch & (BranchTaken ^ funct3[0]) | Jump;
+   assign PCSrc = Branch & BranchTaken | Jump;
    
 endmodule // controller
 
@@ -139,29 +203,29 @@ module maindec (input  logic [6:0] op,
 		output logic 	   MemWrite,
 		output logic 	   Branch,
 		output logic [1:0]  ALUSrc,
-		output logic 	   RegWrite, Jump, MemStrobe,
+		output logic 	   RegWrite, Jump, /*MemStrobe,*/
 		output logic [2:0] ImmSrc,
 		output logic [1:0] ALUOp);
    
-	logic [13:0] 		   controls;
+	logic [12:0] 		   controls;
    
    assign {RegWrite, ImmSrc, ALUSrc, MemWrite,
-	   ResultSrc, Branch, ALUOp, Jump, MemStrobe} = controls;
+	   ResultSrc, Branch, ALUOp, Jump /*,MemStrobe*/} = controls;
    
    always_comb
      case(op)
        // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_MemStrobe
-       7'b0000011: controls = 14'b1_000_01_0_01_0_00_0_1; // load
-       7'b0100011: controls = 14'b0_001_01_1_00_0_00_0_1; // save
-       7'b0110011: controls = 14'b1_xxx_00_0_00_0_10_0_0; // R–type
-       7'b1100011: controls = 14'b0_010_00_0_00_1_01_0_0; // B-Type
-       7'b0010011: controls = 14'b1_000_01_0_00_0_10_0_0; // I–type ALU
-       7'b1101111: controls = 14'b1_011_xx_0_10_0_xx_1_0; // Jal     
-       7'b1100111: controls = 14'b1_000_01_0_10_0_00_1_0; // jalr    
-       7'b0010111: controls = 14'b1_100_11_0_00_0_00_0_0; // auipc    
-       7'b0110111: controls = 14'b1_100_01_0_00_0_11_0_0; // lui      
+       7'b0000011: controls = 13'b1_000_01_0_01_0_00_0; // load
+       7'b0100011: controls = 13'b0_001_01_1_00_0_00_0; // save
+       7'b0110011: controls = 13'b1_xxx_00_0_00_0_10_0; // R–type
+       7'b1100011: controls = 13'b0_010_00_0_00_1_01_0; // B-Type
+       7'b0010011: controls = 13'b1_000_01_0_00_0_10_0; // I–type ALU
+       7'b1101111: controls = 13'b1_011_xx_0_10_0_xx_1; // Jal     
+       7'b1100111: controls = 13'b1_000_01_0_10_0_00_1; // jalr    
+       7'b0010111: controls = 13'b1_100_11_0_00_0_00_0; // auipc    
+       7'b0110111: controls = 13'b1_100_01_0_00_0_11_0; // lui      
 
-       default: controls = 14'bx_xxx_x_x_xx_x_xx_x_x; // ???
+       default: controls = 13'bx_xxx_xx_x_xx_x_xx_x; // ???
      endcase // case (op)
    
 endmodule // maindec
@@ -181,9 +245,9 @@ module aludec (input  logic     opb5,
      case(ALUOp)
        2'b00: ALUControl = 4'b0000; // addition
       //  2'b01: ALUControl = 4'b0001; // subtraction
-       2'b01: if (funct3 == 3'b000 || funct3 == 3'b001) 
+       2'b01: if (funct3 == 3'b000 || funct3 == 3'b001) // used full funct 3 for clarity code 
                   ALUControl = 4'b1011; // subtraction beq/bne
-              else if (funct3 == 3'b100 || funct3 == 3'b101)
+              else if (funct3 == 3'b100 || funct3 == 3'b101) // used full funct 3 for clarity code 
                   ALUControl = 4'b1101; // subtraction blt/bge
               else 
                   ALUControl = 4'b1111; // subtraction bltu/bgeu
@@ -222,10 +286,11 @@ module aludec (input  logic     opb5,
    
 endmodule // aludec
 
-module datapath (input  logic        clk, reset,PCReady,
+module datapath (input  logic        clk, reset, /*MemStrobe,*/ /*PCReady,*/
 		 input  logic [1:0]  ResultSrc,
 		 input  logic 	     PCSrc, Jump,
-	     input  logic [1:0]  ALUSrc,
+     input  logic [2:0]  funct3,
+	   input  logic [1:0]  ALUSrc,
 		 input  logic 	     RegWrite,
 		 input  logic [2:0]  ImmSrc,
 		 input  logic [3:0]  ALUControl,
@@ -238,13 +303,12 @@ module datapath (input  logic        clk, reset,PCReady,
    logic [31:0] 		     PCNext, PCPlus4, PCTarget, PCAdr;
    logic [31:0] 		     ImmExt;
    logic [31:0] 		     SrcA, SrcB, RegOutA;
-   logic [31:0] 		     Result;
+   logic [31:0] 		     Result, ResultFunny;
    
    // next PC logic
-	flopenr #(32) pcreg(clk, reset, PCReady, PCNext, PC);
+	flopr #(32) pcreg(clk, reset, /*PCReady,*/ PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
-   //mux2 #(32)  pcmux (PCPlus4, PCTarget, PCSrc, PCNext);
    
    // register file logic
    regfile  rf (clk, RegWrite, Instr[19:15], Instr[24:20],
@@ -263,6 +327,8 @@ module datapath (input  logic        clk, reset,PCReady,
    // update PCNext
    mux2 #(32)  pcmux (PCPlus4, PCAdr, PCSrc, PCNext);
 
+   //loadextend load (ALUResult, ReadData, funct3, ResultFunny);
+   // if (MemWrite == 1'b1) {Saveextend}
 endmodule // datapath
 
 
@@ -274,25 +340,77 @@ module adder (input  logic [31:0] a, b,
 endmodule
 
 module extend (input  logic [31:7] instr,
-	       input  logic [1:0]  immsrc,
+	       input  logic [2:0]  immsrc,
 	       output logic [31:0] immext);
    
    always_comb
      case(immsrc)
        // I−type
-       2'b00:  immext = {{20{instr[31]}}, instr[31:20]};
+       3'b000:  immext = {{20{instr[31]}}, instr[31:20]};
        // S−type (stores)
-       2'b01:  immext = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+       3'b001:  immext = {{20{instr[31]}}, instr[31:25], instr[11:7]};
        // B−type (branches)
-       2'b10:  immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};       
+       3'b010:  immext = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};       
        // J−type (jal)
-       2'b11:  immext = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
+       3'b011:  immext = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
         // U−type (lui, auipc)
        3'b100: immext = {instr[31:12], 12'b0};
        default: immext = 32'bx; // undefined
      endcase // case (immsrc)
    
 endmodule // extend
+
+module loadextend (input logic [31:0] ALUResult, ReadData,
+                     input logic [2:0] funct3,
+                     output logic [31:0] ResultFunny);
+ 
+     logic [1:0]    loadchunk;
+
+     assign loadchunk = ALUResult[1:0];
+ 
+     always_comb
+        case(funct3)
+         3'b000: case(loadchunk) // lb
+           2'b00: ResultFunny = {{24{ReadData[7]}}, ReadData[7:0]};
+           2'b01: ResultFunny = {{24{ReadData[15]}}, ReadData[15:8]};
+           2'b10: ResultFunny = {{24{ReadData[23]}}, ReadData[23:16]};
+           2'b11: ResultFunny = {{24{ReadData[31]}}, ReadData[31:24]};
+           default: ResultFunny = 32'bx;
+           endcase
+         3'b001:  case(loadchunk[0]) // lh
+             1'b0:  ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
+             1'b1:  ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
+             default: ResultFunny = 32'bx;
+             endcase
+         3'b010:  ResultFunny = ReadData; // lw
+         3'b100: case(loadchunk) // lbu
+           2'b00: ResultFunny = {24'b0, ReadData[7:0]};
+           2'b01: ResultFunny = {16'b0, ReadData[15:8], 8'b0};
+           2'b10: ResultFunny = {8'b0, ReadData[23:16], 16'b0};
+           2'b11: ResultFunny = {ReadData[31:24], 24'b0};
+           default: ResultFunny = 32'bx;
+           endcase
+         3'b101:  case(loadchunk[0]) // lhu
+             1'b0:  ResultFunny = {16'b0, ReadData[15:0]};
+             1'b1:  ResultFunny = {ReadData[31:16], 16'b0};
+             default: ResultFunny = 32'bx;
+             endcase
+         default: ResultFunny = 32'bx;
+         endcase
+             
+endmodule 
+
+/*module Saveextend (input logic [31:0] a, b, ReadData,
+                     input logic Load, MemWrite
+                     input logic [2:0] funct3,
+                     output logic [31:0] result);
+
+  if(MemWrite){
+
+
+  }
+
+endmodule */
 
 module flopr #(parameter WIDTH = 8)
    (input  logic             clk, reset,
@@ -314,7 +432,7 @@ module flopenr #(parameter WIDTH = 8)
      if (reset)  q <= 0;
      else if (en) q <= d;
    
-endmodule // flopenr
+endmodule // flopenr */
 
 module mux2 #(parameter WIDTH = 8)
    (input  logic [WIDTH-1:0] d0, d1,
@@ -334,49 +452,38 @@ module mux3 #(parameter WIDTH = 8)
    
 endmodule // mux3
 
-module dmem (input  logic        clk, we,
-	     input  logic [31:0] a, wd,
-		 input  logic [2:0]  funct3,
+module top (input  logic        clk, reset,
+	    output logic [31:0] WriteData, DataAdr,
+	    output logic 	MemWrite);
+   
+   logic [31:0] 		PC, Instr, ReadData;
+   
+   // instantiate processor and memories
+   riscvsingle rv32single (clk, reset, PC, Instr, MemWrite, DataAdr,
+			   WriteData, ReadData);
+   imem imem (PC, Instr);
+   dmem dmem (clk, MemWrite, DataAdr, WriteData, ReadData);
+   
+endmodule // top
+
+module imem (input  logic [31:0] a,
 	     output logic [31:0] rd);
    
    logic [31:0] 		 RAM[2047:0];
-   logic [31:0] 		 mask, extend_mask, data;
    
-   logic [1:0] alignment;
-   logic signBit;
+   assign rd = RAM[a[31:2]]; // word aligned
    
-   assign alignment = a[1:0];
-   assign data      = RAM[a[31:2]];
-   assign signBit   = data[8 * alignment + ((funct3 == 3'b001) ? 15 : ((funct3 == 3'b000) ? 7 : 31))];
+endmodule // imem
+
+module dmem (input  logic        clk, we,
+	     input  logic [31:0] a, wd,
+	     output logic [31:0] rd);
    
-   always_comb
-	case(funct3)
-		3'b010:  assign mask = 32'hFFFFFFFF; // load word
-		3'b000:  assign mask = 32'h000000FF << (8 * alignment); // load byte
-				 //assign extend_mask = {{24{signBit}}, {8'hFF}};
-		3'b100:  assign mask = 32'h000000FF << (8 * alignment); // load unsigned byte
-				 //assign extend_mask = {{24{signBit}}, {8'hFF}};
-		3'b001:  assign mask = 32'h0000FFFF << (8 * alignment); // load half
-				 //assign extend_mask = {{16{signBit}}, {16'hFFFF}};
-		3'b101:  assign mask = 32'h0000FFFF << (8 * alignment); // load unsigned half
-				 //assign extend_mask = {{16{signBit}}, {16'hFFFF}};
-		default: assign mask = 32'hFFFFFFFF;
-				 //assign extend_mask = 32'hFFFFFFFF;
-	endcase
-	
-   always_comb
-	case(funct3)
-		3'b000: assign extend_mask = {{24{signBit}}, {8'h00}};
-		//3'b100: assign extend_mask = {{24{1'b0}}, {8'h00}};
-		3'b001: assign extend_mask = {{16{signBit}}, {16'h0000}};
-		//3'b101: assign extend_mask = {{16{1'b0}}, {16'h0000}};
-		default: assign extend_mask = 32'h00000000;
-	endcase
+   logic [31:0] 		 RAM[2047:0];
    
-   assign rd = ((data & mask) >> (8 * alignment)) | extend_mask; // word aligned
-   
+   assign rd = RAM[a[31:2]]; // word aligned
    always_ff @(posedge clk)
-     if (we) RAM[a[31:2]] <= ((wd << (8 * alignment)) & mask) | (data & (~mask));
+     if (we) RAM[a[31:2]] <= wd;
    
 endmodule // dmem
 
@@ -452,3 +559,4 @@ module regfile (input  logic        clk,
    assign rd2 = (a2 != 0) ? rf[a2] : 0;
    
 endmodule // regfile
+
