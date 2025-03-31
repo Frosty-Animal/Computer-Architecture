@@ -286,15 +286,17 @@ module aludec (input  logic     opb5,
    
 endmodule // aludec
 
-module datapath (input  logic        clk, reset, /*MemStrobe,*/ /*PCReady,*/
+module datapath (input  logic        clk, reset,
 		 input  logic [1:0]  ResultSrc,
 		 input  logic 	     PCSrc, Jump,
      input  logic [2:0]  funct3,
 	   input  logic [1:0]  ALUSrc,
 		 input  logic 	     RegWrite,
+     input  logic        MemWrite,
 		 input  logic [2:0]  ImmSrc,
 		 input  logic [3:0]  ALUControl,
 		 output logic 	     Zero, Negative, Carry, Overflow,
+     output logic        MemWriteEn,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
 		 output logic [31:0] ALUResult, WriteData,
@@ -302,11 +304,11 @@ module datapath (input  logic        clk, reset, /*MemStrobe,*/ /*PCReady,*/
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget, PCAdr;
    logic [31:0] 		     ImmExt;
-   logic [31:0] 		     SrcA, SrcB, RegOutA;
-   logic [31:0] 		     Result, ResultFunny;
+ 		     Result;
+   logic [31:0]           ExtendedReadData; // To hold the result from loadextend
    
    // next PC logic
-	flopr #(32) pcreg(clk, reset, /*PCReady,*/ PCNext, PC);
+   flopr #(32) pcreg(clk, reset, PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    
@@ -321,15 +323,17 @@ module datapath (input  logic        clk, reset, /*MemStrobe,*/ /*PCReady,*/
    
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, Negative, Carry, Overflow);
    
-   mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4, ResultSrc, Result);
+   // Add loadextend module to properly handle lb, lh, lbu, lhu instructions
+   loadextend load (ALUResult, ReadData, funct3, ExtendedReadData);
+   
+   // Use ExtendedReadData in the result mux instead of ReadData directly
+   mux3 #(32) resultmux (ALUResult, ExtendedReadData, PCPlus4, ResultSrc, Result);
    
    mux2 #(32)  pxAddrMux (PCTarget, ALUResult, (Jump & (ALUSrc === 2'b01)), PCAdr);
    // update PCNext
    mux2 #(32)  pcmux (PCPlus4, PCAdr, PCSrc, PCNext);
-
-   //loadextend load (ALUResult, ReadData, funct3, ResultFunny);
-   // if (MemWrite == 1'b1) {Saveextend}
-endmodule // datapath
+   
+endmodule
 
 
 module adder (input  logic [31:0] a, b,
@@ -360,7 +364,8 @@ module extend (input  logic [31:7] instr,
    
 endmodule // extend
 
-module loadextend (input logic [31:0] ALUResult, ReadData,
+
+/*module loadextend (input logic [31:0] ALUResult, ReadData,
                      input logic [2:0] funct3,
                      output logic [31:0] ResultFunny);
  
@@ -377,40 +382,71 @@ module loadextend (input logic [31:0] ALUResult, ReadData,
            2'b11: ResultFunny = {{24{ReadData[31]}}, ReadData[31:24]};
            default: ResultFunny = 32'bx;
            endcase
-         3'b001:  case(loadchunk[0]) // lh
-             1'b0:  ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
-             1'b1:  ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
+         3'b001: case(loadchunk[0]) // lh
+             1'b0: ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
+             1'b1: ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
              default: ResultFunny = 32'bx;
              endcase
-         3'b010:  ResultFunny = ReadData; // lw
+         3'b010: ResultFunny = ReadData; // lw
          3'b100: case(loadchunk) // lbu
            2'b00: ResultFunny = {24'b0, ReadData[7:0]};
-           2'b01: ResultFunny = {16'b0, ReadData[15:8], 8'b0};
-           2'b10: ResultFunny = {8'b0, ReadData[23:16], 16'b0};
-           2'b11: ResultFunny = {ReadData[31:24], 24'b0};
+           2'b01: ResultFunny = {24'b0, ReadData[15:8]};
+           2'b10: ResultFunny = {24'b0, ReadData[23:16]};
+           2'b11: ResultFunny = {24'b0, ReadData[31:24]};
            default: ResultFunny = 32'bx;
            endcase
-         3'b101:  case(loadchunk[0]) // lhu
-             1'b0:  ResultFunny = {16'b0, ReadData[15:0]};
-             1'b1:  ResultFunny = {ReadData[31:16], 16'b0};
+         3'b101: case(loadchunk[0]) // lhu
+             1'b0: ResultFunny = {16'b0, ReadData[15:0]};
+             1'b1: ResultFunny = {16'b0, ReadData[31:16]};
              default: ResultFunny = 32'bx;
              endcase
          default: ResultFunny = 32'bx;
          endcase
              
-endmodule 
-
-/*module Saveextend (input logic [31:0] a, b, ReadData,
-                     input logic Load, MemWrite
-                     input logic [2:0] funct3,
-                     output logic [31:0] result);
-
-  if(MemWrite){
+endmodule*/
 
 
-  }
-
-endmodule */
+/*module saveextend (
+    input logic [31:0] ALUResult, WriteData, ReadData,
+    input logic [2:0] funct3,
+    output logic [31:0] ModifiedWriteData,
+    output logic MemWriteEn
+);
+    logic [1:0] storepos;
+    assign storepos = ALUResult[1:0];
+    
+    // Default is to write the full word (for sw instruction)
+    assign MemWriteEn = 1'b1;
+    
+    always_comb
+        case(funct3)
+            3'b000: begin // sb 
+                case(storepos)
+                    2'b00: ModifiedWriteData = {ReadData[31:8], WriteData[7:0]};
+                    2'b01: ModifiedWriteData = {ReadData[31:16], WriteData[7:0], ReadData[7:0]};
+                    2'b10: ModifiedWriteData = {ReadData[31:24], WriteData[7:0], ReadData[15:0]};
+                    2'b11: ModifiedWriteData = {WriteData[7:0], ReadData[23:0]};
+                    default: ModifiedWriteData = ReadData;
+                endcase
+            end
+            
+            3'b001: begin // sh
+                case(storepos[0])
+                    1'b0: ModifiedWriteData = {ReadData[31:16], WriteData[15:0]};
+                    1'b1: ModifiedWriteData = {WriteData[15:0], ReadData[15:0]};
+                    default: ModifiedWriteData = ReadData;
+                endcase
+            end
+            
+            3'b010: begin // sw - store word
+                ModifiedWriteData = WriteData;
+            end
+            
+            default: begin
+                ModifiedWriteData = WriteData;
+            end
+        endcase
+endmodule*/
 
 module flopr #(parameter WIDTH = 8)
    (input  logic             clk, reset,
