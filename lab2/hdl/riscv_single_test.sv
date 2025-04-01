@@ -33,57 +33,43 @@
 //   sw           0100011   010       immediate
 //   jal          1101111   immediate immediate 
 /*
-add
-addi
-and
-andi
-auipc
-beq
-bge
-bgeu
-blt
-bltu
-bne
-jal
-jalr
-lb
-lbu
-lh
-lhu
-lw
-lui
-or
-ori
-sb
-sh
-sll
-slt
-slli
-slti
-sltiu
-sltu
-sra
-srai
-srl
-srli
-sub
-sw
-xor
-xori
-
-
-
-
-
-multiply
-divide
-factorial
-square
-square root
-ln
-log
-e
-x^-1
+add Done
+addi Done
+and Done
+andi Done
+auipc Done
+beq Done
+bge Done
+bgeu Done
+blt Done
+bltu Done
+bne Done
+jal Done
+jalr Done
+lb Done
+lbu Done
+lh Done
+lhu Done
+lw Done
+lui Done
+or Done
+ori Done
+sb Does not work
+sh Does not work
+sll Done
+slt Done
+slli Done
+slti Done
+sltiu Done
+sltu Done
+sra Done
+srai Done
+srl Done
+srli Done
+sub Done
+sw Done
+xor Done
+xori Done
 
 */
 module testbench();
@@ -100,7 +86,7 @@ module testbench();
    initial
      begin
 	string memfilename;
-        memfilename = {"../testing/lb.memfile"};
+        memfilename = {"../testing/bltu.memfile"};
         $readmemh(memfilename, dut.imem.RAM);
         $readmemh(memfilename, dut.dmem.RAM);
      end
@@ -214,9 +200,9 @@ module maindec (input  logic [6:0] op,
    
    always_comb
      case(op)
-       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump_MemStrobe
-       7'b0000011: controls = 13'b1_000_01_0_01_0_00_0; // load
-       7'b0100011: controls = 13'b0_001_01_1_00_0_00_0; // save
+       // RegWrite_ImmSrc_ALUSrc_MemWrite_ResultSrc_Branch_ALUOp_Jump
+       7'b0000011: controls = 13'b1_000_01_0_11_0_00_0; // load
+       7'b0100011: controls = 13'b0_001_01_1_01_0_00_0; // save
        7'b0110011: controls = 13'b1_xxx_00_0_00_0_10_0; // R–type
        7'b1100011: controls = 13'b0_010_00_0_00_1_01_0; // B-Type
        7'b0010011: controls = 13'b1_000_01_0_00_0_10_0; // I–type ALU
@@ -286,17 +272,15 @@ module aludec (input  logic     opb5,
    
 endmodule // aludec
 
-module datapath (input  logic        clk, reset,
+module datapath (input  logic        clk, reset, /*MemStrobe,*/ /*PCReady,*/
 		 input  logic [1:0]  ResultSrc,
 		 input  logic 	     PCSrc, Jump,
      input  logic [2:0]  funct3,
 	   input  logic [1:0]  ALUSrc,
 		 input  logic 	     RegWrite,
-     input  logic        MemWrite,
 		 input  logic [2:0]  ImmSrc,
 		 input  logic [3:0]  ALUControl,
 		 output logic 	     Zero, Negative, Carry, Overflow,
-     output logic        MemWriteEn,
 		 output logic [31:0] PC,
 		 input  logic [31:0] Instr,
 		 output logic [31:0] ALUResult, WriteData,
@@ -304,11 +288,11 @@ module datapath (input  logic        clk, reset,
    
    logic [31:0] 		     PCNext, PCPlus4, PCTarget, PCAdr;
    logic [31:0] 		     ImmExt;
- 		     Result;
-   logic [31:0]           ExtendedReadData; // To hold the result from loadextend
+   logic [31:0] 		     SrcA, SrcB, RegOutA;
+   logic [31:0] 		     Result, ResultFunny;
    
    // next PC logic
-   flopr #(32) pcreg(clk, reset, PCNext, PC);
+	flopr #(32) pcreg(clk, reset, /*PCReady,*/ PCNext, PC);
    adder  pcadd4 (PC, 32'd4, PCPlus4);
    adder  pcaddbranch (PC, ImmExt, PCTarget);
    
@@ -323,17 +307,17 @@ module datapath (input  logic        clk, reset,
    
    alu  alu (SrcA, SrcB, ALUControl, ALUResult, Zero, Negative, Carry, Overflow);
    
-   // Add loadextend module to properly handle lb, lh, lbu, lhu instructions
-   loadextend load (ALUResult, ReadData, funct3, ExtendedReadData);
-   
-   // Use ExtendedReadData in the result mux instead of ReadData directly
-   mux3 #(32) resultmux (ALUResult, ExtendedReadData, PCPlus4, ResultSrc, Result);
+   // mux3 #(32) resultmux (ALUResult, ReadData, PCPlus4, ResultSrc, Result);
+
+   mux4 #(32) resultmux (ALUResult, ReadData, PCPlus4, ResultFunny, ResultSrc, Result);
    
    mux2 #(32)  pxAddrMux (PCTarget, ALUResult, (Jump & (ALUSrc === 2'b01)), PCAdr);
    // update PCNext
    mux2 #(32)  pcmux (PCPlus4, PCAdr, PCSrc, PCNext);
-   
-endmodule
+
+   loadextend load (ALUResult, ReadData, funct3, ResultFunny);
+   // if (MemWrite == 1'b1) {Saveextend}
+endmodule // datapath
 
 
 module adder (input  logic [31:0] a, b,
@@ -364,8 +348,7 @@ module extend (input  logic [31:7] instr,
    
 endmodule // extend
 
-
-/*module loadextend (input logic [31:0] ALUResult, ReadData,
+module loadextend (input logic [31:0] ALUResult, ReadData,
                      input logic [2:0] funct3,
                      output logic [31:0] ResultFunny);
  
@@ -382,71 +365,68 @@ endmodule // extend
            2'b11: ResultFunny = {{24{ReadData[31]}}, ReadData[31:24]};
            default: ResultFunny = 32'bx;
            endcase
-         3'b001: case(loadchunk[0]) // lh
-             1'b0: ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
-             1'b1: ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
+         3'b001:  case(loadchunk[1]) // lh
+             1'b0:  ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
+             1'b1:  ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
              default: ResultFunny = 32'bx;
              endcase
-         3'b010: ResultFunny = ReadData; // lw
+         3'b010:  ResultFunny = ReadData; // lw
          3'b100: case(loadchunk) // lbu
-           2'b00: ResultFunny = {24'b0, ReadData[7:0]};
-           2'b01: ResultFunny = {24'b0, ReadData[15:8]};
-           2'b10: ResultFunny = {24'b0, ReadData[23:16]};
-           2'b11: ResultFunny = {24'b0, ReadData[31:24]};
+           2'b00: ResultFunny = {{24{0}}, ReadData[7:0]};
+           2'b01: ResultFunny = {{24{0}}, ReadData[15:8]};
+           2'b10: ResultFunny = {{24{0}}, ReadData[23:16]};
+           2'b11: ResultFunny = {{24{0}}, ReadData[31:24]};
            default: ResultFunny = 32'bx;
            endcase
-         3'b101: case(loadchunk[0]) // lhu
-             1'b0: ResultFunny = {16'b0, ReadData[15:0]};
-             1'b1: ResultFunny = {16'b0, ReadData[31:16]};
+         3'b101:  case(loadchunk[1]) // lhu
+             1'b0:  ResultFunny = {{16{0}}, ReadData[15:0]};
+             1'b1:  ResultFunny = {{16{0}}, ReadData[31:16]};
              default: ResultFunny = 32'bx;
              endcase
          default: ResultFunny = 32'bx;
          endcase
              
-endmodule*/
+endmodule 
 
+module Storeextend (input logic [31:0] ALUResult, ReadData,
+                     input logic [2:0] funct3,
+                     output logic [31:0] ResultFunny);
+ 
+     logic [1:0]    loadchunk;
 
-/*module saveextend (
-    input logic [31:0] ALUResult, WriteData, ReadData,
-    input logic [2:0] funct3,
-    output logic [31:0] ModifiedWriteData,
-    output logic MemWriteEn
-);
-    logic [1:0] storepos;
-    assign storepos = ALUResult[1:0];
-    
-    // Default is to write the full word (for sw instruction)
-    assign MemWriteEn = 1'b1;
-    
-    always_comb
+     assign loadchunk = ALUResult[1:0];
+ 
+     always_comb
         case(funct3)
-            3'b000: begin // sb 
-                case(storepos)
-                    2'b00: ModifiedWriteData = {ReadData[31:8], WriteData[7:0]};
-                    2'b01: ModifiedWriteData = {ReadData[31:16], WriteData[7:0], ReadData[7:0]};
-                    2'b10: ModifiedWriteData = {ReadData[31:24], WriteData[7:0], ReadData[15:0]};
-                    2'b11: ModifiedWriteData = {WriteData[7:0], ReadData[23:0]};
-                    default: ModifiedWriteData = ReadData;
-                endcase
-            end
-            
-            3'b001: begin // sh
-                case(storepos[0])
-                    1'b0: ModifiedWriteData = {ReadData[31:16], WriteData[15:0]};
-                    1'b1: ModifiedWriteData = {WriteData[15:0], ReadData[15:0]};
-                    default: ModifiedWriteData = ReadData;
-                endcase
-            end
-            
-            3'b010: begin // sw - store word
-                ModifiedWriteData = WriteData;
-            end
-            
-            default: begin
-                ModifiedWriteData = WriteData;
-            end
-        endcase
-endmodule*/
+         3'b000: case(loadchunk) // lb
+           2'b00: ResultFunny = {{24{ReadData[7]}}, ReadData[7:0]};
+           2'b01: ResultFunny = {{24{ReadData[15]}}, ReadData[15:8]};
+           2'b10: ResultFunny = {{24{ReadData[23]}}, ReadData[23:16]};
+           2'b11: ResultFunny = {{24{ReadData[31]}}, ReadData[31:24]};
+           default: ResultFunny = 32'bx;
+           endcase
+         3'b001:  case(loadchunk[1]) // lh
+             1'b0:  ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
+             1'b1:  ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
+             default: ResultFunny = 32'bx;
+             endcase
+         3'b010:  ResultFunny = ReadData; // lw
+         3'b100: case(loadchunk) // lbu
+           2'b00: ResultFunny = {{24{0}}, ReadData[7:0]};
+           2'b01: ResultFunny = {{24{0}}, ReadData[15:8]};
+           2'b10: ResultFunny = {{24{0}}, ReadData[23:16]};
+           2'b11: ResultFunny = {{24{0}}, ReadData[31:24]};
+           default: ResultFunny = 32'bx;
+           endcase
+         3'b101:  case(loadchunk[1]) // lhu
+             1'b0:  ResultFunny = {{16{0}}, ReadData[15:0]};
+             1'b1:  ResultFunny = {{16{0}}, ReadData[31:16]};
+             default: ResultFunny = 32'bx;
+             endcase
+         default: ResultFunny = 32'bx;
+         endcase
+             
+endmodule 
 
 module flopr #(parameter WIDTH = 8)
    (input  logic             clk, reset,
@@ -479,14 +459,23 @@ module mux2 #(parameter WIDTH = 8)
    
 endmodule // mux2
 
-module mux3 #(parameter WIDTH = 8)
+/*module mux3 #(parameter WIDTH = 8)
    (input  logic [WIDTH-1:0] d0, d1, d2,
     input logic [1:0] 	     s,
     output logic [WIDTH-1:0] y);
    
   assign y = s[1] ? d2 : (s[0] ? d1 : d0);
    
-endmodule // mux3
+endmodule // mux3 */
+
+module mux4 # (parameter WIDTH = 8) 
+            (input logic [WIDTH-1:0] d0, d1, d2, d3,
+             input logic [1:0] s,
+             output logic [WIDTH-1:0] y);
+      
+    assign y = (s[1] ? (s[0] ? d3 : d2) : (s[0] ? d1 : d0));
+
+endmodule
 
 module top (input  logic        clk, reset,
 	    output logic [31:0] WriteData, DataAdr,
@@ -537,10 +526,9 @@ module alu (input  logic [31:0] a, b,
 
    assign condinvb = alucontrol[0] ? ~b : b;
    assign sum = a + condinvb + alucontrol[0];
+   assign unsum = a + condinvb + alucontrol[0];
    assign isAddSub = ~alucontrol[2] & ~alucontrol[1] |
                      ~alucontrol[1] & alucontrol[0];   
-   assign xorOut = a ^ b;
-   assign sltuOut = unsigned'(a) < unsigned'(b);
 
    always_comb
      case (alucontrol)
@@ -551,15 +539,14 @@ module alu (input  logic [31:0] a, b,
        4'b0101:  result = sum[31] ^ overflow; // slt 
        4'b0110:  result = a >> unsigned'(b[4:0]);      // srl  
        4'b0111:  result = $signed(a) >>> unsigned'(b[4:0]);     // sra
-       4'b0100:  result = xorOut;      // xor  
+       4'b0100:  result = a ^ b;      // xor  
        4'b1000:  result = a << unsigned'(b[4:0]);      // sll
-       4'b1001:  result = sltuOut;     // sltu
+       4'b1001:  result = unsigned'(a) < unsigned'(b);     // sltu
        4'b1011:  result = sum;         // beq, bne
        4'b1101:  result = sum;         // blt, bge
        4'b1111:  result = sum;         // bltu, bgeu
-	   4'b1110:  result = b;		   // LUI
-	   4'b1010:  result = ~(sum[31] ^ overflow); // sgt
-	   4'b1100:  result = ~sltuOut;    // sgtu
+	     4'b1110:  result = b;		   // lui
+
        default:  result = 32'bx;
      endcase
 
@@ -569,7 +556,7 @@ module alu (input  logic [31:0] a, b,
    assign negative = sum[31];
    // Cout
    assign carried = a - b;
-   assign carry = carried[32];
+   assign carry = (unsigned'(a) >= unsigned'(b)); 
    // zero
    assign zero = (result == 32'b0);
 
@@ -595,4 +582,3 @@ module regfile (input  logic        clk,
    assign rd2 = (a2 != 0) ? rf[a2] : 0;
    
 endmodule // regfile
-
