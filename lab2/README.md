@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------------
-              Single-Cycle RISC-V Processor Changes (in riscv_single_test.sv)
+              		Single-Cycle RISC-V Processor Changes
 -------------------------------------------------------------------------------------
 
 At line 44, we added:
