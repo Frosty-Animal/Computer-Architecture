@@ -386,47 +386,7 @@ module loadextend (input logic [31:0] ALUResult, ReadData,
          default: ResultFunny = 32'bx;
          endcase
              
-endmodule 
-
-module Storeextend (input logic [31:0] ALUResult, ReadData,
-                     input logic [2:0] funct3,
-                     output logic [31:0] ResultFunny);
- 
-     logic [1:0]    loadchunk;
-
-     assign loadchunk = ALUResult[1:0];
- 
-     always_comb
-        case(funct3)
-         3'b000: case(loadchunk) // lb
-           2'b00: ResultFunny = {{24{ReadData[7]}}, ReadData[7:0]};
-           2'b01: ResultFunny = {{24{ReadData[15]}}, ReadData[15:8]};
-           2'b10: ResultFunny = {{24{ReadData[23]}}, ReadData[23:16]};
-           2'b11: ResultFunny = {{24{ReadData[31]}}, ReadData[31:24]};
-           default: ResultFunny = 32'bx;
-           endcase
-         3'b001:  case(loadchunk[1]) // lh
-             1'b0:  ResultFunny = {{16{ReadData[15]}}, ReadData[15:0]};
-             1'b1:  ResultFunny = {{16{ReadData[31]}}, ReadData[31:16]};
-             default: ResultFunny = 32'bx;
-             endcase
-         3'b010:  ResultFunny = ReadData; // lw
-         3'b100: case(loadchunk) // lbu
-           2'b00: ResultFunny = {{24{0}}, ReadData[7:0]};
-           2'b01: ResultFunny = {{24{0}}, ReadData[15:8]};
-           2'b10: ResultFunny = {{24{0}}, ReadData[23:16]};
-           2'b11: ResultFunny = {{24{0}}, ReadData[31:24]};
-           default: ResultFunny = 32'bx;
-           endcase
-         3'b101:  case(loadchunk[1]) // lhu
-             1'b0:  ResultFunny = {{16{0}}, ReadData[15:0]};
-             1'b1:  ResultFunny = {{16{0}}, ReadData[31:16]};
-             default: ResultFunny = 32'bx;
-             endcase
-         default: ResultFunny = 32'bx;
-         endcase
-             
-endmodule 
+endmodule // loadextend
 
 module flopr #(parameter WIDTH = 8)
    (input  logic             clk, reset,
@@ -526,7 +486,6 @@ module alu (input  logic [31:0] a, b,
 
    assign condinvb = alucontrol[0] ? ~b : b;
    assign sum = a + condinvb + alucontrol[0];
-   assign unsum = a + condinvb + alucontrol[0];
    assign isAddSub = ~alucontrol[2] & ~alucontrol[1] |
                      ~alucontrol[1] & alucontrol[0];   
 
