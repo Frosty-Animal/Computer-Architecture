@@ -189,7 +189,7 @@ endmodule
 module controller(input  logic		 clk, reset,
                   // Decode stage control signals
                   input logic [6:0]  opD,
-                  input logic [2:0]  funct3D, funct3E
+                  input logic [2:0]  funct3D, funct3E,
                   input logic 	     funct7b5D,
                   output logic [2:0] ImmSrcD,
                   // Execute stage control signals
@@ -654,4 +654,3 @@ module alu (input  logic [31:0] a, b,
    assign zero = (result == 32'b0);
 
 endmodule // alu
-
